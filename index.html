@@ -1,0 +1,79 @@
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js"></script>
+  </head>
+  <body>
+    <button onclick="main()">Run</button>
+    <button onclick="showFig()">show</button>
+    <button onclick="closeFig()">close</button>
+    <div id="app">
+      <div id="target"></div>
+    </div>
+    <script>
+
+      async function main() {
+        const dirHandle = await showDirectoryPicker();
+        const pyodide = await loadPyodide();  
+        this.pyodide = pyodide;
+        const nativefs = await pyodide.mountNativeFS("/mount_dir", dirHandle);
+        this.pyodide.pyimport("sys").path.insert(0, "/mount_dir")
+
+        document.pyodideMplTarget = document.getElementById('target')
+        await this.pyodide.loadPackage("matplotlib");
+
+        result = this.pyodide.runPythonAsync(`
+import asyncio
+import js
+import shutil
+shutil.rmtree('/lib/python3.11/site-packages/matplotlib_pyodide')
+shutil.copytree('/mount_dir', '/lib/python3.11/site-packages/matplotlib_pyodide')
+
+import matplotlib.pyplot as plt
+import numpy as np
+import matplotlib as mpl
+import time
+mpl.use("module://matplotlib_pyodide.html5_canvas_backend")
+
+t = np.arange(0.0, 2.0, 0.01)
+s = 1 + np.sin(2 * np.pi * t)
+fig, ax = plt.subplots()
+ax.plot(t, s)
+
+print("showing figure")
+print(f"js.document.app: {js.document.getElementById('app')}")
+print(f"js.document.target: {js.document.getElementById('target')}")
+
+plt.show()
+
+print("waiting for 1sec")
+print("closing figure")
+
+print(f"js.document.app: {js.document.getElementById('app')}")
+print(f"js.document.target: {js.document.getElementById('target')}")
+        `);
+      };
+
+      
+      async function showFig() {
+        result = this.pyodide.runPythonAsync(`
+print("showing figure")
+
+t = np.arange(0.0, 2.0, 0.01)
+s = 1 + np.sin(2 * np.pi * t)
+fig, ax = plt.subplots()
+ax.plot(t, s)
+plt.show()
+        `);
+      };
+      async function closeFig() {
+        result = this.pyodide.runPythonAsync(`
+print("closing figure")
+plt.close()
+        `);
+      };
+
+    </script>
+  </body>
+</html>
